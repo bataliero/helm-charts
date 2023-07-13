@@ -5,6 +5,16 @@ on:
     branches:
       - main
 
+# permission can be added at job level or workflow level
+permissions:
+  # write-all
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
+  pull-requests: write # todo czy to jest ptorzebne?
+  actions: read
+
+    # required for all workflows
+  security-events: write
 jobs:
   release:
     runs-on: ubuntu-latest
