@@ -1,0 +1,108 @@
+name: Kube static analysis
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terrascan:
+    # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
+    # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        # with:
+        #   fetch-depth: 0
+
+      - uses: alexellis/arkade-get@master
+        with:
+            terrascan: latest
+            helm: latest
+            # faas-cli: 0.14.10
+# helm template  . | docker run  --rm -i -v  (pwd):/project zegl/kube-score:latest --help 
+            #  kubescore version
+            # helm template charts/test123 | kube-score score -
+      - name: check for faas-cli
+        run: |
+            terrascan scan
+
+  trivy:
+    name: Build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Trivy vulnerability scanner in repo mode
+        uses: aquasecurity/trivy-action@master
+        with:
+            scan-type: 'fs'
+            ignore-unfixed: true
+            scanners: "vuln,config,secret"
+            format: 'sarif'
+            output: 'trivy-results.sarif'
+
+      - name: SARIF Multitool
+        uses: microsoft/sarif-actions@v0.1
+        with:
+            command: 'summary'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+            sarif_file: 'trivy-results.sarif'
+    # Steps represent a sequence of tasks that will be executed as part of the job
+  checkov:
+    name: checkov
+    runs-on: ubuntu-20.04
+    steps:
+        # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
+        - uses: actions/checkout@v3
+  
+        - name: Checkov GitHub Action
+          uses: bridgecrewio/checkov-action@v12
+          with:
+            # framework: helm,yaml,kubernetes,kustomize
+            framework: helm
+            # This will add both a CLI output to the console and create a results.sarif file
+            compact: true
+            output_format: cli,sarif
+            output_file_path: console,results.sarif
+          
+        - name: Upload SARIF file
+          uses: github/codeql-action/upload-sarif@v2
+          
+          # Results are generated only on a success or failure
+          # this is required since GitHub by default won't run the next step
+          # when the previous one has failed. Security checks that do not pass will 'fail'.
+          # An alternative is to add `continue-on-error: true` to the previous step
+          # Or 'soft_fail: true' to checkov.
+          if: success() || failure()
+          with:
+            sarif_file: results.sarif
+
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+  kube-linter:
+    name: kube-linter
+    runs-on: ubuntu-20.04
+    steps:
+        # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
+      - uses: actions/checkout@v3
+      - name: Scan repo with kube-linter
+        uses: stackrox/kube-linter-action@v1.0.4
+        with:
+          directory: charts
+        #   config: .kube-linter/config.yaml
+        #   format: sarif
+        #   output-file: kube-linter.sarif
+
+
+        # polaris?
+        # kubeval
+        # kubeconform
+        # conftest
