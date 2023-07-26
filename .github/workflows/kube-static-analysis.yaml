@@ -55,8 +55,8 @@ jobs:
         # if: ${{ inputs.charts }} == "[]"
         # if: ${{ fromJSON(inputs.charts) }}  == '[""]'
         id: chart-list
-        env:
-           chart_inputs: ${{ fromJSON(inputs.charts) }}
+        # env:
+        #    chart_inputs: ${{ fromJSON(inputs.charts) }}
 
         # run: echo "::set-output name=charts::$(find charts -maxdepth 1 -mindepth 1 -type d)"
           # 
