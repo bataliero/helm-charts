@@ -12,6 +12,9 @@ on:
         required: false
         # default: '[""]'
         default: '["charts/test123"]'
+      # values:
+      #   type: string
+      #   default: '["values.yaml"]'
 
         # default: "[\"xxx\",\"bbb\"]"
       # charts: 
@@ -72,7 +75,7 @@ jobs:
         #     echo "inputs: $chart_inputs"
         #     echo $chart_inputs | jq '. | length'
         #     echo "xxxx ${{inputs }}" 
-        run : | 
+        run: |
             if ${{ fromJson(inputs.charts)[0] != null}}; then
               echo "${{ fromJson(inputs.charts) }}"
               charts="[\"./charts/test123\"]"
@@ -189,7 +192,7 @@ jobs:
       - name: Run polaris audit
         run: |
           helm template ${{ matrix.chart }} | \
-            polaris audit \ 
+            polaris audit \
               -f pretty \
               --only-show-failed-tests \
               --set-exit-code-below-score 100 \
@@ -278,7 +281,7 @@ jobs:
       - name: Install dependencies
         run: pip install sarif-tools
 
-      - name: Install dependencies
+      - name: Results
         run: sarif summary
 
       - name: Upload Trivy scan results to GitHub Security tab
@@ -303,7 +306,7 @@ jobs:
             # framework: helm,yaml,kubernetes,kustomize
             framework: helm
             # This will add both a CLI output to the console and create a results.sarif file
-            compact: true
+            # compact: true
             quiet: true 
             output_format: cli,sarif
             output_file_path: console,results.sarif
