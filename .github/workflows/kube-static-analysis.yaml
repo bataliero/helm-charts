@@ -3,11 +3,17 @@ name: Kube static analysis
 on:
   workflow_call:
     inputs:
+      skip:
+        type: string
+        default: '[""]'
       charts:
         description: "charts (json-encoded list)"
         type: string
         required: false
-        default: '[""]'
+        # default: '[""]'
+        default: '["charts/test123"]'
+
+        # default: "[\"xxx\",\"bbb\"]"
       # charts: 
       #   type: string
       #   default: ["charts/test123"]
@@ -36,7 +42,7 @@ jobs:
 
         # not inputs.charts 
       - name: Checkout code
-        if: ${{ inputs.charts }} == "[]"
+        # if: ${{ inputs.charts }} == "[]"
         uses: actions/checkout@v3
 
       # - name: set charts
@@ -51,6 +57,9 @@ jobs:
         # if: ${{ inputs.charts }} == "[]"
         # if: ${{ fromJSON(inputs.charts) }}  == '[""]'
         id: chart-list
+        env:
+           chart_inputs: ${{ fromJSON(inputs.charts) }}
+
         # run: echo "::set-output name=charts::$(find charts -maxdepth 1 -mindepth 1 -type d)"
           # 
           # echo "::set-output name=charts::${charts}"
@@ -58,22 +67,32 @@ jobs:
             # ${{ inputs.charts }} != "[]"
             # if [[  json_input == '[""]' ]]; then 
             # json_input=${{ fromJSON(inputs.charts) }}  
+            # echo "${{ fromJSON(inputs.charts) }}"
+            # echo "buek buek ${{ inputs.charts }}"
+        # run : | 
+        #     echo "xxxx ${chart_inputs}" 
+        #     echo "null ${{ fromJson(inputs.charts)[0] != null}}"
+        #     # echo "${{ inputs.charts[0] == null }}"
+        #     echo "inputs: $chart_inputs"
+        #     echo $chart_inputs | jq '. | length'
+        #     echo "xxxx ${{inputs }}" 
         run : | 
-            if [ ${{ fromJSON(inputs.charts).length }} -eq 0 ]; then
+            if ${{ fromJson(inputs.charts)[0] != null}}; then
               charts="[\"./charts/test123\"]"
               echo "charts=$(echo ${charts})" >> $GITHUB_OUTPUT
-              echo "String is not empty"
             else 
               charts=$(find ./charts -maxdepth 1 -mindepth 1 -type d | jq --raw-input --slurp 'split("\n")[:-1]')
               echo "charts=$(echo ${charts})" >> $GITHUB_OUTPUT
             fi
     outputs:
+
       matrix-charts: ${{ steps.chart-list.outputs.charts }}
 
   kubesec:
     name: kubesec
     runs-on: ubuntu-20.04
     needs: list-charts
+    if: ${{ (!contains(fromJSON(inputs.skip), github.job)) }}
     strategy:
       matrix:
         chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
@@ -93,211 +112,211 @@ jobs:
         uses: controlplaneio/kubesec-action@v0.0.2
         with:
           input: "helm-chart.yaml"
-  terrascan:
-    # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
-    # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        # with:
-        #   fetch-depth: 0
+  # terrascan:
+  #   # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
+  #   # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #       # with:
+  #       #   fetch-depth: 0
 
-      - uses: alexellis/arkade-get@master
-        with:
-            terrascan: latest
-            helm: latest
-            # faas-cli: 0.14.10
-            #  kubescore version
-            # helm template charts/test123 | kube-score score -
-      - name: check for faas-cli
-        run: |
-            terrascan scan
+  #     - uses: alexellis/arkade-get@master
+  #       with:
+  #           terrascan: latest
+  #           helm: latest
+  #           # faas-cli: 0.14.10
+  #           #  kubescore version
+  #           # helm template charts/test123 | kube-score score -
+  #     - name: check for faas-cli
+  #       run: |
+  #           terrascan scan
 
 
-  kubescape:
-    # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
-    # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        # with:
-        #   fetch-depth: 0
+  # kubescape:
+  #   # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
+  #   # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #       # with:
+  #       #   fetch-depth: 0
 
-      - uses: alexellis/arkade-get@master
-        with:
-            kubescape: latest
-            helm: latest
-      - name: check for faas-cli
-        run: |
-          kubescape scan ${{ inputs.charts }} 
+  #     - uses: alexellis/arkade-get@master
+  #       with:
+  #           kubescape: latest
+  #           helm: latest
+  #     - name: check for faas-cli
+  #       run: |
+  #         kubescape scan ${{ inputs.charts }} 
 
-  polaris:
-    name: Polaris static analysis
-    needs: list-charts
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
-    # container:
-    #   image: quay.io/fairwinds/polaris:8.4
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # polaris:
+  #   name: Polaris static analysis
+  #   needs: list-charts
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
+  #   # container:
+  #   #   image: quay.io/fairwinds/polaris:8.4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
 
-      - name: install helm
-        uses: azure/setup-helm@v3
+  #     - name: install helm
+  #       uses: azure/setup-helm@v3
 
-      - name: Setup polaris
-        uses: fairwindsops/polaris/.github/actions/setup-polaris@master
-        with:
-          version: 8.4.0
-      # - name: polaris
-      #   run: |
-      #     wget https://github.com/FairwindsOps/polaris/releases/download/8.4.0/polaris_linux_amd64.tar.gz
-      #     tar -xvf polaris_linux_amd64.tar.gz 
-      #     chmod +x ./polaris
-      # - name: Install helm and run helm template
-      #   uses: helm/chart-testing-action@v2.1.0
-      #   with:
-      #     command: template
-      #     config: ct.yaml
-      #     chart-repos: bitnami=https://charts.bitnami.com/bitnami
-      - name: Run polaris audit
-        run: |
-          helm template ${{ matrix.chart }} | polaris audit -f pretty --only-show-failed-tests --audit-path -
+  #     - name: Setup polaris
+  #       uses: fairwindsops/polaris/.github/actions/setup-polaris@master
+  #       with:
+  #         version: 8.4.0
+  #     # - name: polaris
+  #     #   run: |
+  #     #     wget https://github.com/FairwindsOps/polaris/releases/download/8.4.0/polaris_linux_amd64.tar.gz
+  #     #     tar -xvf polaris_linux_amd64.tar.gz 
+  #     #     chmod +x ./polaris
+  #     # - name: Install helm and run helm template
+  #     #   uses: helm/chart-testing-action@v2.1.0
+  #     #   with:
+  #     #     command: template
+  #     #     config: ct.yaml
+  #     #     chart-repos: bitnami=https://charts.bitnami.com/bitnami
+  #     - name: Run polaris audit
+  #       run: |
+  #         helm template ${{ matrix.chart }} | polaris audit -f pretty --only-show-failed-tests --audit-path -
   
-  kubeaudit:
-    name: kube-audit
-    needs: list-charts
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
-    # container:
-    #   image: quay.io/fairwinds/polaris:8.4
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # kubeaudit:
+  #   name: kube-audit
+  #   needs: list-charts
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
+  #   # container:
+  #   #   image: quay.io/fairwinds/polaris:8.4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
 
-      - name: install helm
-        uses: azure/setup-helm@v3
+  #     - name: install helm
+  #       uses: azure/setup-helm@v3
 
-      - name: Install kube-audit
-        env: 
-          version: 0.22.0
-        run: |
-            wget --output-document kubeaudit.tar.gz \
-              "https://github.com/Shopify/kubeaudit/releases/download/v${version}/kubeaudit_${version}_linux_amd64.tar.gz"
-            tar xvf kubeaudit.tar.gz && mv kubeaudit /usr/local/bin/
-      - name: run
-        run: |
-          helm template ${{ matrix.chart }} | kubeaudit all -g -f -
+  #     - name: Install kube-audit
+  #       env: 
+  #         version: 0.22.0
+  #       run: |
+  #           wget --output-document kubeaudit.tar.gz \
+  #             "https://github.com/Shopify/kubeaudit/releases/download/v${version}/kubeaudit_${version}_linux_amd64.tar.gz"
+  #           tar xvf kubeaudit.tar.gz && mv kubeaudit /usr/local/bin/
+  #     - name: run
+  #       run: |
+  #         helm template ${{ matrix.chart }} | kubeaudit all -g -f -
     
 
-  kube-score:
-    name: kube-score
-    needs: list-charts
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
-    # container:
-    #   image: quay.io/fairwinds/polaris:8.4
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # kube-score:
+  #   name: kube-score
+  #   needs: list-charts
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
+  #   # container:
+  #   #   image: quay.io/fairwinds/polaris:8.4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
 
-      - name: install helm
-        uses: azure/setup-helm@v3
-      - name: Install kube-score
-        env: 
-          version: 1.17.0
-        run: |
-            wget "https://github.com/zegl/kube-score/releases/download/v${version}/kube-score_${version}_linux_amd64.tar.gz"
-            tar xvf ./kube-score_${version}_linux_amd64.tar.gz && mv kube-score /usr/local/bin/
-      - name: run
-        run: |
-          helm template ${{ matrix.chart }} | kube-score score - --all-default-optional \
-            --exit-one-on-warning --color always \
-            --ignore-container-cpu-limit \
-            --ignore-container-memory-limit
-        # helm template  . | docker run  --rm -i -v  (pwd):/project zegl/kube-score:latest --help 
+  #     - name: install helm
+  #       uses: azure/setup-helm@v3
+  #     - name: Install kube-score
+  #       env: 
+  #         version: 1.17.0
+  #       run: |
+  #           wget "https://github.com/zegl/kube-score/releases/download/v${version}/kube-score_${version}_linux_amd64.tar.gz"
+  #           tar xvf ./kube-score_${version}_linux_amd64.tar.gz && mv kube-score /usr/local/bin/
+  #     - name: run
+  #       run: |
+  #         helm template ${{ matrix.chart }} | kube-score score - --all-default-optional \
+  #           --exit-one-on-warning --color always \
+  #           --ignore-container-cpu-limit \
+  #           --ignore-container-memory-limit
+  #       # helm template  . | docker run  --rm -i -v  (pwd):/project zegl/kube-score:latest --help 
   
-  trivy:
-    name: Build
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # trivy:
+  #   name: Build
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
 
-      - name: Run Trivy vulnerability scanner in repo mode
-        uses: aquasecurity/trivy-action@master
-        with:
-            scan-type: 'fs'
-            ignore-unfixed: true
-            scanners: "vuln,config,secret"
-            format: 'sarif'
-            output: 'trivy-results.sarif'
+  #     - name: Run Trivy vulnerability scanner in repo mode
+  #       uses: aquasecurity/trivy-action@master
+  #       with:
+  #           scan-type: 'fs'
+  #           ignore-unfixed: true
+  #           scanners: "vuln,config,secret"
+  #           format: 'sarif'
+  #           output: 'trivy-results.sarif'
 
-      - name: SARIF Multitool
-        uses: microsoft/sarif-actions@v0.1
-        with:
-            command: 'summary'
+  #     - name: SARIF Multitool
+  #       uses: microsoft/sarif-actions@v0.1
+  #       with:
+  #           command: 'summary'
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-            sarif_file: 'trivy-results.sarif'
-    # Steps represent a sequence of tasks that will be executed as part of the job
-  checkov:
-    name: checkov
-    runs-on: ubuntu-20.04
-    steps:
-        # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
-        - uses: actions/checkout@v3
+  #     - name: Upload Trivy scan results to GitHub Security tab
+  #       uses: github/codeql-action/upload-sarif@v2
+  #       with:
+  #           sarif_file: 'trivy-results.sarif'
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  # checkov:
+  #   name: checkov
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #       # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
+  #       - uses: actions/checkout@v3
   
-        - name: Checkov GitHub Action
-          uses: bridgecrewio/checkov-action@v12
-          with:
-            # framework: helm,yaml,kubernetes,kustomize
-            framework: helm
-            # This will add both a CLI output to the console and create a results.sarif file
-            compact: true
-            output_format: cli,sarif
-            output_file_path: console,results.sarif
+  #       - name: Checkov GitHub Action
+  #         uses: bridgecrewio/checkov-action@v12
+  #         with:
+  #           # framework: helm,yaml,kubernetes,kustomize
+  #           framework: helm
+  #           # This will add both a CLI output to the console and create a results.sarif file
+  #           compact: true
+  #           output_format: cli,sarif
+  #           output_file_path: console,results.sarif
           
-        - name: Upload SARIF file
-          uses: github/codeql-action/upload-sarif@v2
+  #       - name: Upload SARIF file
+  #         uses: github/codeql-action/upload-sarif@v2
           
-          # Results are generated only on a success or failure
-          # this is required since GitHub by default won't run the next step
-          # when the previous one has failed. Security checks that do not pass will 'fail'.
-          # An alternative is to add `continue-on-error: true` to the previous step
-          # Or 'soft_fail: true' to checkov.
-          if: success() || failure()
-          with:
-            sarif_file: results.sarif
+  #         # Results are generated only on a success or failure
+  #         # this is required since GitHub by default won't run the next step
+  #         # when the previous one has failed. Security checks that do not pass will 'fail'.
+  #         # An alternative is to add `continue-on-error: true` to the previous step
+  #         # Or 'soft_fail: true' to checkov.
+  #         if: success() || failure()
+  #         with:
+  #           sarif_file: results.sarif
 
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-  kube-linter:
-    name: kube-linter
-    runs-on: ubuntu-20.04
-    steps:
-        # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
-      - uses: actions/checkout@v3
-      - name: Scan repo with kube-linter
-        uses: stackrox/kube-linter-action@v1.0.4
-        with:
-          directory: charts
-        #   config: .kube-linter/config.yaml
-        #   format: sarif
-        #   output-file: kube-linter.sarif
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  # kube-linter:
+  #   name: kube-linter
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #       # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
+  #     - uses: actions/checkout@v3
+  #     - name: Scan repo with kube-linter
+  #       uses: stackrox/kube-linter-action@v1.0.4
+  #       with:
+  #         directory: charts
+  #       #   config: .kube-linter/config.yaml
+  #       #   format: sarif
+  #       #   output-file: kube-linter.sarif
 
 
-        # polaris?
-        # kubeval
-        # kubeconform
-        # conftest
+  #       # polaris?
+  #       # kubeval
+  #       # kubeconform
+  #       # conftest

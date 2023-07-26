@@ -10,7 +10,8 @@ jobs:
     lint:
         uses: ./.github/workflows/kube-static-analysis.yaml
         with:
-            charts: '["charts/test123"]'
+            charts: '["checkov", "tfsec", "terrascan", "tfscan"]'
+            skip: '["kubesec"]'
             
 # jobs:
 # static-analysis:
