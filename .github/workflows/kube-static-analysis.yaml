@@ -82,7 +82,6 @@ jobs:
               echo "charts=$(echo ${charts})" >> $GITHUB_OUTPUT
             fi
     outputs:
-
       matrix-charts: ${{ steps.chart-list.outputs.charts }}
 
   kubesec:
@@ -103,7 +102,6 @@ jobs:
 
       - name: build template
         run: |
-          echo "${{ inputs.charts }}"
           helm template ${{ matrix.chart }} > helm-chart.yaml
 
       - name: Run kubesec scanner
@@ -114,6 +112,10 @@ jobs:
     # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
     # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
     runs-on: ubuntu-latest
+    needs: list-charts
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -156,8 +158,8 @@ jobs:
 
   polaris:
     name: Polaris static analysis
-    needs: list-charts
     runs-on: ubuntu-latest
+    needs: list-charts
     strategy:
       matrix:
         chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
@@ -254,6 +256,10 @@ jobs:
   trivy:
     name: trivy
     runs-on: ubuntu-20.04
+    needs: list-charts
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -280,6 +286,10 @@ jobs:
   checkov:
     name: checkov
     runs-on: ubuntu-20.04
+    needs: list-charts
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
     steps:
         # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
         - uses: actions/checkout@v3
@@ -311,6 +321,10 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
   kube-linter:
     name: kube-linter
+    needs: list-charts
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
     runs-on: ubuntu-20.04
     steps:
         # Checks-out your repository under $GITHUB_WORKSPACE, so follow-up steps can access it
