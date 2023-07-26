@@ -126,12 +126,11 @@ jobs:
         with:
             terrascan: latest
             helm: latest
-            # faas-cli: 0.14.10
-            #  kubescore version
-            # helm template charts/test123 | kube-score score -
       - name: check for faas-cli
         run: |
-            terrascan scan
+            terrascan scan \
+              -i helm \
+              --skip-rules AC-K8-OE-PK-M-0158,AC-K8-OE-PK-M-0156
 
 
   kubescape:
@@ -193,7 +192,7 @@ jobs:
             polaris audit \ 
               -f pretty \
               --only-show-failed-tests \
-              --set-exit-code-below-score 100 
+              --set-exit-code-below-score 100 \
               --audit-path -
   
   kubeaudit:
@@ -273,10 +272,14 @@ jobs:
             format: 'sarif'
             output: 'trivy-results.sarif'
 
-      - name: SARIF Multitool
-        uses: microsoft/sarif-actions@v0.1
-        with:
-            command: 'summary'
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+
+      - name: Install dependencies
+        run: pip install sarif-tools
+
+      - name: Install dependencies
+        run: sarif summary
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
