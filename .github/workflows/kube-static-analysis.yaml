@@ -1,13 +1,98 @@
 name: Kube static analysis
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      charts:
+        description: "charts (json-encoded list)"
+        type: string
+        required: false
+        default: '[""]'
+      # charts: 
+      #   type: string
+      #   default: ["charts/test123"]
+      tfsec_version:
+        required: false
+        description: 'tfsec version'
+        type: string
+        default: "1.28.1"
+# on:
+#   push:
+#     branches:
+#       - main
 
 permissions:
   contents: write
 jobs:
+
+  list-charts:
+    # id: list-charts
+    name: List charts
+    runs-on: ubuntu-latest
+    steps:
+      # - name: run
+      #   charts=${{ action.inputs}}
+      #   ${foo:-${val}}
+
+        # not inputs.charts 
+      - name: Checkout code
+        if: ${{ inputs.charts }} == "[]"
+        uses: actions/checkout@v3
+
+      # - name: set charts
+      #   # if: ${{ inputs.charts }} != "[]"
+      #   # id: chart-list
+      #   run : | 
+      #       charts="[${{ inputs.charts }}]"
+      #       charts="[\"./charts/test123\"]"
+      #       echo "charts=$(echo ${charts})" >> $GITHUB_OUTPUT
+
+      - name: Find charts
+        # if: ${{ inputs.charts }} == "[]"
+        # if: ${{ fromJSON(inputs.charts) }}  == '[""]'
+        id: chart-list
+        # run: echo "::set-output name=charts::$(find charts -maxdepth 1 -mindepth 1 -type d)"
+          # 
+          # echo "::set-output name=charts::${charts}"
+        # run: |
+            # ${{ inputs.charts }} != "[]"
+            # if [[  json_input == '[""]' ]]; then 
+            # json_input=${{ fromJSON(inputs.charts) }}  
+        run : | 
+            if [ ${{ fromJSON(inputs.charts).length }} -eq 0 ]; then
+              charts="[\"./charts/test123\"]"
+              echo "charts=$(echo ${charts})" >> $GITHUB_OUTPUT
+              echo "String is not empty"
+            else 
+              charts=$(find ./charts -maxdepth 1 -mindepth 1 -type d | jq --raw-input --slurp 'split("\n")[:-1]')
+              echo "charts=$(echo ${charts})" >> $GITHUB_OUTPUT
+            fi
+    outputs:
+      matrix-charts: ${{ steps.chart-list.outputs.charts }}
+
+  kubesec:
+    name: kubesec
+    runs-on: ubuntu-20.04
+    needs: list-charts
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: install helm
+        uses: azure/setup-helm@v3
+
+      - name: build template
+        run: |
+          echo "${{ inputs.charts }}"
+          helm template ${{ matrix.chart }} > helm-chart.yaml
+
+      - name: Run kubesec scanner
+        uses: controlplaneio/kubesec-action@v0.0.2
+        with:
+          input: "helm-chart.yaml"
   terrascan:
     # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
     # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
@@ -23,13 +108,123 @@ jobs:
             terrascan: latest
             helm: latest
             # faas-cli: 0.14.10
-# helm template  . | docker run  --rm -i -v  (pwd):/project zegl/kube-score:latest --help 
             #  kubescore version
             # helm template charts/test123 | kube-score score -
       - name: check for faas-cli
         run: |
             terrascan scan
 
+
+  kubescape:
+    # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
+    # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        # with:
+        #   fetch-depth: 0
+
+      - uses: alexellis/arkade-get@master
+        with:
+            kubescape: latest
+            helm: latest
+      - name: check for faas-cli
+        run: |
+          kubescape scan ${{ inputs.charts }} 
+
+  polaris:
+    name: Polaris static analysis
+    needs: list-charts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
+    # container:
+    #   image: quay.io/fairwinds/polaris:8.4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: install helm
+        uses: azure/setup-helm@v3
+
+      - name: Setup polaris
+        uses: fairwindsops/polaris/.github/actions/setup-polaris@master
+        with:
+          version: 8.4.0
+      # - name: polaris
+      #   run: |
+      #     wget https://github.com/FairwindsOps/polaris/releases/download/8.4.0/polaris_linux_amd64.tar.gz
+      #     tar -xvf polaris_linux_amd64.tar.gz 
+      #     chmod +x ./polaris
+      # - name: Install helm and run helm template
+      #   uses: helm/chart-testing-action@v2.1.0
+      #   with:
+      #     command: template
+      #     config: ct.yaml
+      #     chart-repos: bitnami=https://charts.bitnami.com/bitnami
+      - name: Run polaris audit
+        run: |
+          helm template ${{ matrix.chart }} | polaris audit -f pretty --only-show-failed-tests --audit-path -
+  
+  kubeaudit:
+    name: kube-audit
+    needs: list-charts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
+    # container:
+    #   image: quay.io/fairwinds/polaris:8.4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: install helm
+        uses: azure/setup-helm@v3
+
+      - name: Install kube-audit
+        env: 
+          version: 0.22.0
+        run: |
+            wget --output-document kubeaudit.tar.gz \
+              "https://github.com/Shopify/kubeaudit/releases/download/v${version}/kubeaudit_${version}_linux_amd64.tar.gz"
+            tar xvf kubeaudit.tar.gz && mv kubeaudit /usr/local/bin/
+      - name: run
+        run: |
+          helm template ${{ matrix.chart }} | kubeaudit all -g -f -
+    
+
+  kube-score:
+    name: kube-score
+    needs: list-charts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
+    # container:
+    #   image: quay.io/fairwinds/polaris:8.4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: install helm
+        uses: azure/setup-helm@v3
+      - name: Install kube-score
+        env: 
+          version: 1.17.0
+        run: |
+            wget "https://github.com/zegl/kube-score/releases/download/v${version}/kube-score_${version}_linux_amd64.tar.gz"
+            tar xvf ./kube-score_${version}_linux_amd64.tar.gz && mv kube-score /usr/local/bin/
+      - name: run
+        run: |
+          helm template ${{ matrix.chart }} | kube-score score - --all-default-optional \
+            --exit-one-on-warning --color always \
+            --ignore-container-cpu-limit \
+            --ignore-container-memory-limit
+        # helm template  . | docker run  --rm -i -v  (pwd):/project zegl/kube-score:latest --help 
+  
   trivy:
     name: Build
     runs-on: ubuntu-20.04

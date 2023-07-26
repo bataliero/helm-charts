@@ -1,0 +1,21 @@
+
+name: Release Charts
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+
+    lint:
+        uses: ./.github/workflows/kube-static-analysis.yaml
+        with:
+            charts: '["charts/test123"]'
+            
+# jobs:
+# static-analysis:
+#     # runs-on: ubuntu-latest
+#     name: Static Analysis
+#     steps:
+#     - uses: actions/checkout@v3
+#     - uses: ./.github/actions/lint
