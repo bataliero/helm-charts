@@ -74,6 +74,7 @@ jobs:
         #     echo "xxxx ${{inputs }}" 
         run : | 
             if ${{ fromJson(inputs.charts)[0] != null}}; then
+              echo "${{ fromJson(inputs.charts) }}"
               charts="[\"./charts/test123\"]"
               echo "charts=$(echo ${charts})" >> $GITHUB_OUTPUT
             else 
@@ -88,7 +89,7 @@ jobs:
     name: kubesec
     runs-on: ubuntu-20.04
     needs: list-charts
-    if: ${{ (!contains(inputs.skip, github.job)) }}
+    if: ${{ (!contains(fromJson(inputs.skip), 'kubesec')) }}
     strategy:
       matrix:
         chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
