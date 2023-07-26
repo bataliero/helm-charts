@@ -148,7 +148,7 @@ jobs:
             helm: latest
       - name: check for faas-cli
         run: |
-          kubescape scan ${{ inputs.charts }} 
+          kubescape scan --compliance-threshold 100 ${{ inputs.charts }} 
 
   polaris:
     name: Polaris static analysis
@@ -183,7 +183,12 @@ jobs:
       #     chart-repos: bitnami=https://charts.bitnami.com/bitnami
       - name: Run polaris audit
         run: |
-          helm template ${{ matrix.chart }} | polaris audit -f pretty --only-show-failed-tests --audit-path -
+          helm template ${{ matrix.chart }} | \
+            polaris audit \ 
+              -f pretty \
+              --only-show-failed-tests \
+              --set-exit-code-below-score 100 
+              --audit-path -
   
   kubeaudit:
     name: kube-audit
@@ -243,7 +248,7 @@ jobs:
         # helm template  . | docker run  --rm -i -v  (pwd):/project zegl/kube-score:latest --help 
   
   trivy:
-    name: Build
+    name: trivy
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
@@ -282,6 +287,7 @@ jobs:
             framework: helm
             # This will add both a CLI output to the console and create a results.sarif file
             compact: true
+            quiet: true 
             output_format: cli,sarif
             output_file_path: console,results.sarif
           
