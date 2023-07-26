@@ -55,8 +55,8 @@ jobs:
         # if: ${{ inputs.charts }} == "[]"
         # if: ${{ fromJSON(inputs.charts) }}  == '[""]'
         id: chart-list
-        # env:
-        #    chart_inputs: ${{ fromJSON(inputs.charts) }}
+        env:
+           chart_inputs: ${{ fromJSON(inputs.charts) }}
 
         # run: echo "::set-output name=charts::$(find charts -maxdepth 1 -mindepth 1 -type d)"
           # 
@@ -90,7 +90,7 @@ jobs:
     name: kubesec
     runs-on: ubuntu-20.04
     needs: list-charts
-    if: ${{ (!contains(fromJSON(inputs.skip), github.job)) }}
+    if: ${{ (!contains(inputs.skip, github.job)) }}
     strategy:
       matrix:
         chart: ${{ fromJson(needs.list-charts.outputs.matrix-charts) }}
