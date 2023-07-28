@@ -7,10 +7,40 @@ metadata:
   annotations:
     "helm.sh/hook": test
 spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
   containers:
     - name: wget
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop:
+            - all
+      imagePullPolicy: Always
       image: busybox
       command: ['wget']
-      args: ['{{ include "test123.fullname" . }}.default.svc.cluster.local:{{ .Values.service.port }}/device/1234/data']
+      args: ['--spider', 
+        '{{ include "test123.fullname" . }}.default.svc.cluster.local:{{ .Values.service.port }}/device/1234/data']
       # args: ['{{ include "test123.fullname" . }}.default.svc.cluster.local:{{ .Values.service.port }}/device/1234/data']
+      livenessProbe:
+        exec:
+          command: ["true"]
+        initialDelaySeconds: 0  
+      readinessProbe:
+        exec:
+          command: ["true"]
+        initialDelaySeconds: 0  
+      resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
   restartPolicy: Never

@@ -6,7 +6,7 @@ replicaCount: 2
 
 image:
   repository: ghcr.io/bataliero/test123
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
@@ -30,22 +30,25 @@ podAnnotations: {}
 podSecurityContext:
   # readOnlyRootFilesystem: true
   # runAsGroup: 5000
-  runAsNonRoot: false
+  runAsNonRoot: true
+  runAsUser: 1000
   # readOnlyRootFilesystem: true
+  # capabilities:
+  #   drop: ["NET_RAW"]
   seccompProfile:
     type: RuntimeDefault
 # fsGroup: 2000
 
 securityContext:
-  capabilities:
-    drop: ["NET_RAW"]
   # capabilities:
-  #   drop:
-  #   - ALL
+  #   drop: ["NET_RAW"]
+  capabilities:
+    drop:
+    - ALL
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-# runAsNonRoot: true
-# runAsUser: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
 
 service:
   type: ClusterIP
