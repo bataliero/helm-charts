@@ -34,6 +34,16 @@ entries:
     version: 0.1.0
   test123:
   - apiVersion: v2
+    appVersion: "1690280732"
+    created: "2023-07-28T12:24:28.065781605Z"
+    description: A Helm chart for Kubernetes1
+    digest: a0fb5706e89cbac57ffb6af73f24c4077724d363684f467f4157f534da8e0f92
+    name: test123
+    type: application
+    urls:
+    - https://github.com/bataliero/helm-charts/releases/download/test123-0.1.4/test123-0.1.4.tgz
+    version: 0.1.4
+  - apiVersion: v2
     appVersion: "1689266413"
     created: "2023-07-17T15:34:07.871534072Z"
     description: A Helm chart for Kubernetes
@@ -63,4 +73,4 @@ entries:
     urls:
     - https://github.com/bataliero/helm-charts/releases/download/test123-0.1.0/test123-0.1.0.tgz
     version: 0.1.0
-generated: "2023-07-28T12:17:36.525928842Z"
+generated: "2023-07-28T12:24:28.065977206Z"
