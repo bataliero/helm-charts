@@ -9,21 +9,24 @@ metadata:
 spec:
   securityContext:
     runAsNonRoot: true
-    runAsUser: 1000
+    runAsUser: 10000
+    runAsGroup: 10000
     seccompProfile:
       type: RuntimeDefault
   containers:
     - name: wget
       securityContext:
+        privileged: false
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: true
         runAsNonRoot: true
-        runAsUser: 1000
+        runAsUser: 10000
+        runAsGroup: 10000
         capabilities:
           drop:
             - all
       imagePullPolicy: Always
-      image: busybox
+      image: busybox:1.28
       command: ['wget']
       args: ['--spider', 
         '{{ include "test123.fullname" . }}.default.svc.cluster.local:{{ .Values.service.port }}/device/1234/data']

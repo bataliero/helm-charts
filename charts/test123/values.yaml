@@ -31,10 +31,12 @@ podSecurityContext:
   # readOnlyRootFilesystem: true
   # runAsGroup: 5000
   runAsNonRoot: true
-  runAsUser: 1000
+  runAsUser: 10000
+  runAsGroup: 10000
   # readOnlyRootFilesystem: true
   # capabilities:
   #   drop: ["NET_RAW"]
+  # priviledged: false
   seccompProfile:
     type: RuntimeDefault
 # fsGroup: 2000
@@ -42,13 +44,16 @@ podSecurityContext:
 securityContext:
   # capabilities:
   #   drop: ["NET_RAW"]
+  # priviledged: false
+  privileged: false
   capabilities:
     drop:
     - ALL
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
   runAsNonRoot: true
-  runAsUser: 1000
+  runAsUser: 10000
+  runAsGroup: 10000
 
 service:
   type: ClusterIP
@@ -75,12 +80,14 @@ resources:
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  limits:
-    cpu: 100m
-    memory: 128Mi
   requests:
     cpu: 100m
     memory: 128Mi
+    ephemeral-storage: "2Gi"
+  limits:
+    cpu: 100m
+    memory: 128Mi
+    ephemeral-storage: "20Gi"
 
 autoscaling:
   enabled: true

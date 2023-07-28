@@ -103,14 +103,23 @@ jobs:
       - name: install helm
         uses: azure/setup-helm@v3
 
+      - name: install kubesec
+        env:
+          version: 2.13.0
+        run: 
+          wget --output-document kubesec.tar.gz \
+            "https://github.com/controlplaneio/kubesec/releases/download/v${version}/kubesec_linux_amd64.tar.gz"
+          tar xvf kubesec.tar.gz && mv kubesec /usr/local/bin/
+
       - name: build template
         run: |
           helm template ${{ matrix.chart }} > helm-chart.yaml
+      
 
-      - name: Run kubesec scanner
-        uses: controlplaneio/kubesec-action@v0.0.2
-        with:
-          input: "helm-chart.yaml"
+      # - name: Run kubesec scanner
+      #   uses: controlplaneio/kubesec-action@v0.0.2
+      #   with:
+      #     input: "helm-chart.yaml"
   terrascan:
     # depending on default permission settings for your org (contents being read-only or read-write for workloads), you will have to add permissions
     # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token

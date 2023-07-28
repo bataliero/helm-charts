@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget # create a pdb for the deployment
+metadata:
+  name: {{ include "test123.fullname" . }}
+spec:
+  minAvailable: 2 # ensure at least two pods are available
+  selector:
+    matchLabels:
+      {{- include "test123.selectorLabels" . | nindent 6 }}
+
